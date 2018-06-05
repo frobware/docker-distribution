@@ -44,8 +44,13 @@ func ParseNormalizedNamed(s string) (Named, error) {
 	if strings.ToLower(remoteName) != remoteName {
 		return nil, errors.New("invalid reference format: repository name must be lowercase")
 	}
-
-	ref, err := Parse(domain + "/" + remainder)
+	var ref Reference
+	var err error
+	if domain == "" {
+		ref, err = Parse(remainder)
+	} else {
+		ref, err = Parse(domain + "/" + remainder)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -56,16 +61,12 @@ func ParseNormalizedNamed(s string) (Named, error) {
 	return named, nil
 }
 
-// splitDockerDomain splits a repository name to domain and remotename string.
-// If no valid domain is found, the default domain is used. Repository name
-// needs to be already validated before.
+// splitDockerDomain splits a repository name to domain and remotename
+// string. If no valid domain is found, then domain is "". Repository
+// name needs to be already validated before.
 func splitDockerDomain(name string) (domain, remainder string) {
-	i := strings.IndexRune(name, '/')
-	if i == -1 || (!strings.ContainsAny(name[:i], ".:") && name[:i] != "localhost") {
-		domain, remainder = defaultDomain, name
-	} else {
-		domain, remainder = name[:i], name[i+1:]
-	}
+	domain, remainder = splitRepoName(name)
+	// Note: this function no longer sets domain=defaultDomain if domain==""
 	if domain == legacyDefaultDomain {
 		domain = defaultDomain
 	}

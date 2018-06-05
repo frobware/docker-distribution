@@ -204,8 +204,17 @@ func Parse(s string) (Reference, error) {
 
 	var repo repository
 
+	// if s=="fooo/bar" then anchoredNameRegexp.FindStringSubmatch
+	// actually matches with 3 items:
+	//
+	//   nameMatch[0]="fooo/bar"
+	//   nameMatch[1]="fooo"
+	//   nameMatch[2]="bar"
+	//
+	// which is why we also add && repoHasDomain(s) because
+	// nameMatch[0] is not a valid domain component.
 	nameMatch := anchoredNameRegexp.FindStringSubmatch(matches[1])
-	if nameMatch != nil && len(nameMatch) == 3 {
+	if nameMatch != nil && len(nameMatch) == 3 && repoHasDomain(nameMatch[1]) {
 		repo.domain = nameMatch[1]
 		repo.path = nameMatch[2]
 	} else {
@@ -430,4 +439,18 @@ func (c canonicalReference) String() string {
 
 func (c canonicalReference) Digest() digest.Digest {
 	return c.digest
+}
+
+func splitRepoName(name string) (string, string) {
+	i := strings.IndexRune(name, '/')
+	if i == -1 || (!strings.ContainsAny(name[:i], ".:") && name[:i] != "localhost") {
+		return "", name
+	} else {
+		return name[:i], name[i+1:]
+	}
+}
+
+func repoHasDomain(name string) bool {
+	domain, _ := splitRepoName(name)
+	return domain != ""
 }
